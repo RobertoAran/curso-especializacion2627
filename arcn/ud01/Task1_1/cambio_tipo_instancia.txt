@@ -1,0 +1,37 @@
+#Demasiado enfarragoso
+
+##Opciones de seguridad
+#Codigo 0 - El cambio se ha hecho o no habia nada que hacer
+#Codigo 1 - Uso incorrecto: Numero de parametros incorrecto o opcion desconocida
+#Codigo 2 - La instancia no existe o es inaccesible
+#Codigo 3 - La instancia no tiene tu etiqueta propietario
+#Codigo 4 - La instancia no esta terminada o esta terminandose
+#Codigo 5 - Tipo no valido: no existe o no esta permitido en learners lab
+#Codigo 6 - Cancelado por el usuario en la confirmacion
+#Codigo 7 - Error de aws durante el cambio
+
+##Flujo del script.
+# El usuario ejecuta el script con el id de la maquina a cambiar y el tipo de maquina que quiere.
+# El script recoje con getOps dependiendo de si son 3 o son 2 - $Y $ID $TYPE
+
+###Adicionalmente el usuario puede meter un -y despues de el nombre del script para no tener que confirmar el cambio en aws.
+# El script confirma que el usuario ha metido el correcto numero de parametros 
+# El script confirma que el usuario ha metido un tipo de maquina valido - t2.x t3.x y nano, micro, small, medium o large, sino error 6 y fuera
+
+##1º parte.
+# El script lo recibe y se trae la info en modo json de la maquina con describe-instances
+# Con el json revisa que el id de la maquina exista y sea accesible - en caso de que no error 2 y fuera.
+# Con el json comprueba que tenga tu etiqueta - en caso de que no Codigo 3 y fuera.
+# Con el json comprueba el status - En caso de que este en terminated, shutting-down codigo 4 y fuera.
+# Con el json comprueba si el tipo de maquina es el mismo que ya esta, - si lo es, se informa, codigo 5 y fuera
+
+# Con el json comprueba si la maquina esta corriendo, en caso de estarlo la para con aws ec2 stop-instances --instance-ids $ID
+# Se esperara a terminar de detenerse con aws ec2 wait instance-stopped --instance-ids $ID - contara el tiempo que tarda en detenerse
+
+##2º parte
+# El script ejecuta aws ec2 modify-instance-attribute --instance-id $ID \ --instance-type Value=$TYPE
+
+# El script ejecutara la instancia con aws ec2 start-instances --instance-ids $ID - en caso de dar error se cerrara con Codigo 6 si el usuario no ha confirmado o con codigo 7 si ha habido un error por parte de aws
+# El script esperara a que termine de ejecutarse con aws ec2 wait instance-running --instance-ids $ID - contara el tiempo que tarda en ejecutarse
+
+# El script escribira tanto el tiempo que tardo en detenerse como en ejecutarse y los enseñara, tras de esto dara codigo 0 y se cerrara 

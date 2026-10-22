@@ -1,0 +1,9 @@
+Objetivo - Lanzar una instancia ec2 dentro de una red publica creada por nosotros a traves de cli
+
+Meta 1-Crear un script que no requiera interaccion con usuario
+Meta 2-Crear una VPC a traves de el script
+Meta 3-Crear una subred a traves de script
+Meta 4-Crear una instancia ec2 que este linkeada a la subred/vpc que hemos creado
+
+Configuracion ec2
+    Nombre ape_nombre
