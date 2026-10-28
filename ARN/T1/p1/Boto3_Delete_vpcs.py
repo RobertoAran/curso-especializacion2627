@@ -1,6 +1,6 @@
 import boto3
 
-#Code to delete VPC - SUBNETS
+#Code to delete VPC - SUBNETS 8163
 
 #Taking the vpc ID's (tags)
 def get_vpcs_id(ec2):
