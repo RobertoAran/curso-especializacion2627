@@ -1,0 +1,1 @@
+scripts linux montar ec2, el de boto 3 y el documento que ponga foto de que ha funcionado bien - ejecucion
