@@ -3,6 +3,8 @@ import boto3
 DRYRUN = False
 AVALIABILITY_ZONE = 'us-east-1'
 
+TAGNAMEVPC = 'vpcTestBoto3'
+
 def create_vpc(ec2):
     vpc = ec2.create_vpc(
         CidrBlock='172.16.0.0/22',
@@ -11,8 +13,8 @@ def create_vpc(ec2):
             'ResourceType': 'vpc',
             'Tags': [
                 {
-                    'Key': 'Nane',
-                    'Value': 'vpcTestBoto3'
+                    'Key': 'Name',
+                    'Value': TAGNAMEVPC
                 },
             ]
         },
@@ -42,7 +44,7 @@ def create_subnets(ec2, vpc_id):
             'ResourceType': 'subnet',
             'Tags': [
                 {
-                    'Key': 'Nane',
+                    'Key': 'Name',
                     'Value': 'subnetTestBoto3'
                 },
             ]

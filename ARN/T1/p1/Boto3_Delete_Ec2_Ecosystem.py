@@ -44,7 +44,7 @@ def get_subnet_by_tag(ec2):
     subnets_id_raw = ec2.describe_subnets(
         Filters=[
             {
-                'Name': 'tag:Nane',
+                'Name': 'tag:Name',
                 'Values': [
                     'subnetTestBoto3'
                 ]
@@ -71,7 +71,7 @@ def get_vpcs_tag(ec2):
     vpcs_id_raw = ec2.describe_vpcs(
         Filters=[
             {
-                'Name': 'tag:Nane',
+                'Name': 'tag:Name',
                 'Values': [
                     'vpcTestBoto3'
                 ]
@@ -93,10 +93,13 @@ def delete_vpcs(ec2, vpcs_id):
         )
         print("VPC with id " + vpc_id + " deleted correctly")
 
+
 if __name__ == "__main__":
     ec2 = boto3.client('ec2')
 
     ec2Instance_id = get_ec2Instance_by_tag(ec2)
+    print(ec2Instance_id)
+    delete_ec2Instance(ec2, ec2Instance_id)
 
     subnets_id = get_subnet_by_tag(ec2)
     print(subnets_id)
