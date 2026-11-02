@@ -1,0 +1,6 @@
+[submodule "prac1cicd"]
+	path = prac1cicd
+	url = https://github.com/RobertoAran/login-app-cicd
+[submodule "DSAN/prac1cicd"]
+	path = DSAN/prac1cicd
+	url = https://github.com
