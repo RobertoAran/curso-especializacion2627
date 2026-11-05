@@ -1,0 +1,22 @@
+Lista de posibles
+
+Al iniciar el py saldra una pestaña para seleccionar entre varios, cada vez que termine una accion volvera a preguntar.
+    - def preguntas que redirige
+    - Listar buckets
+        -- Te preguntara si quieres alguna etiqueta en general
+        -- Te hara un general de todos en modo tabla
+    - Listar archivos de un bucket
+        -- te enseñara la tabla y cuando selecciones el que quieres te enseñara 
+    - Crear buckets
+        -- Pedira nombre de el bucket y posibles etiquetas
+            Avisara si ya esta creado.
+    - Copiar archivo a bucket
+        -- Te listara los buckets en modo basico (1º opcion) en el que podras seleccionar, despues te pedira ruta de el archivo a Copiar
+            En caso de que el archivo a copiar no exista o no se encuentre soltara error
+    - Copiar de bucket a bucket
+        -- Te enseñara la lista basica de buckets y seleccionaras primero de el que va a copiar y segundo el que va a recibir
+            despues de esto te pedira la ruta de el archivo a copiar
+    - Eliminar de bucket
+        -- Te enseñara las tablas basicas y te pedira seleccionar 
+    - Mover de bucket a bucket
+        -- hara lo mismo que el de copiar pero al final borrara el archivo de el principio
