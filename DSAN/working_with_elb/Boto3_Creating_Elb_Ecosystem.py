@@ -29,11 +29,14 @@ def create_security_group(ec2, vpc_id):
 
 
 
-def create_ec2instance(ec2, subnet_id):
+def create_ec2instance(ec2, security_group_id):
     Ec2Instance = ec2.create_instances(
         ImageId = 'ami-0ecb62995f68bb549',
         InstanceType = 't3.micro',
-        SubnetId = subnet_id,
+        SecurityGroupIds=[
+            security_group_id
+        ],
+        
         TagSpecifications=[
                 {
                     'ResourceType': 'instance',
@@ -56,3 +59,4 @@ def create_ec2instance(ec2, subnet_id):
 if __name__ == "__main__":
     ec2client = boto3.client('ec2')
     ec2resource = boto3.resource('ec2')
+
