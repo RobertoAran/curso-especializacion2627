@@ -97,7 +97,7 @@ def create_security_group(ec2, vpc_id):
             'ToPort': 22,
             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
         }]
-    )
+    )g
     print("Security Group with id " + sg_id + " created (SSH allowed)")
     return sg_id
 
