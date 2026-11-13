@@ -55,7 +55,6 @@ def create_subnet(ec2, vpc_id,cidrBlockIp):
 
 
 def create_internet_access(ec2, vpc_id, subnet_id):
-    # Internet Gateway
     igw = ec2.create_internet_gateway(
         TagSpecifications=name_tags('internet-gateway'),
         DryRun=DRYRUN
@@ -102,22 +101,14 @@ def create_security_group(ec2, vpc_id):
     print("Security Group with id " + sg_id + " created (SSH allowed)")
     return sg_id
 
-def create_elastic_ip(ec2, vpc_id, subnet_id):
-    eip = ec2.allocate_address(
-        Domain=vpc_id,
+def create_elastic_ip(ec2, vpc_id):
+    eip = (ec2.allocate_address(
+        Domain='vpc',
         DryRun=DRYRUN,
         TagSpecifications=name_tags('elastic-ip')
-        )
+        ))['AllocationId']
     mi_allocation_id = eip['AllocationId']
-
-    nat_id = create_nat_gateway(
-        ec2,
-        subnet_id,
-        mi_allocation_id,
-        TagSpecifications=name_tags('nat-gateway'),
-        DryRun=DRYRUN
-        )
-    return nat_id
+    return mi_allocation_id
 
 def create_nat_gateway(ec2, subnet_id, allocation_id):
     nat_gateway = ec2.create_nat_gateway(
@@ -131,12 +122,13 @@ def create_nat_gateway(ec2, subnet_id, allocation_id):
     return nat_gateway_id
 
 
-def create_ec2instance(ec2, subnet_id, sg_id):
+def create_ec2instance(ec2, subnet_id, sg_id, private_ip_address):
     response = ec2.run_instances(
         ImageId=AMI_ID,
         InstanceType='t3.micro',
         KeyName=KEY_NAME,
         SubnetId=subnet_id,
+        PrivateIpAddress=private_ip_address,
         SecurityGroupIds=[sg_id],
         MinCount=1,
         MaxCount=1,
@@ -150,7 +142,6 @@ def create_ec2instance(ec2, subnet_id, sg_id):
     desc = ec2.describe_instances(InstanceIds=[instance_id])
     public_ip = desc['Reservations'][0]['Instances'][0].get('PublicIpAddress')
     print("-> Public IP:  " + str(public_ip))
-    print("-> Try: ssh -i ~/labsuser.pem ubuntu@" + str(public_ip) + "  (debería FUNCIONAR: hay IGW)")
     return instance_id
 
 
@@ -160,9 +151,14 @@ if __name__ == "__main__":
     vpc_id = create_vpc(ec2,'172.16.0.0/16')
     subnet_idpublic = create_subnet(ec2, vpc_id,'172.16.0.0/20')
     subnet_idprivate = create_subnet(ec2, vpc_id,'172.16.64.0/20')
-    create_internet_access(ec2, vpc_id, subnet_idpublic)
     sg_id = create_security_group(ec2, vpc_id)
-    create_nat_gateway(ec2, subnet_idpublic, 'eipalloc-0f3b1c2d3e4f5g6h7')
-    create_ec2instance(ec2, subnet_idpublic, sg_id)
+
+    create_internet_access(ec2, vpc_id, subnet_idpublic)
+    
+    eip = create_elastic_ip(ec2, vpc_id)
+    create_nat_gateway(ec2, subnet_idpublic, eip)
+
+    create_ec2instance(ec2, subnet_idpublic, sg_id, '172.16.0.100/20')
+    create_ec2instance(ec2, subnet_idprivate, sg_id, '172.64.0.100/20')
 
     print("=== Deployment Completed Successfully ===")
