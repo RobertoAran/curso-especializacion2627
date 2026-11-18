@@ -1,0 +1,9 @@
+Instalacion de prometheus y 2 ec2 con nodos instalados
+
+Crear una alerta y ver como se estresa desde prometeus
+
+SNS y Correo - solo si me aburro
+
+craer mas alertas, slide 22
+
+todo esto esta en el slide de practica 4
