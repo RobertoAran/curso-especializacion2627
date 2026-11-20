@@ -42,6 +42,34 @@ def get_sg_by_tag(ec2):
 
 
 def delete_sgs(ec2, sg_ids):
+    if not sg_ids:
+        return
+    sg_id_set = set(sg_ids)
+    groups = ec2.describe_security_groups(GroupIds=sg_ids)['SecurityGroups']
+    for group in groups:
+        for permission_key, revoke_method in (
+            ('IpPermissions', ec2.revoke_security_group_ingress),
+            ('IpPermissionsEgress', ec2.revoke_security_group_egress)
+        ):
+            for permission in group.get(permission_key, []):
+                group_pairs = [
+                    {'GroupId': pair['GroupId']}
+                    for pair in permission.get('UserIdGroupPairs', [])
+                    if pair.get('GroupId') in sg_id_set
+                ]
+                if not group_pairs:
+                    continue
+                revoke_permission = {
+                    'IpProtocol': permission['IpProtocol'],
+                    'UserIdGroupPairs': group_pairs
+                }
+                for port_key in ('FromPort', 'ToPort'):
+                    if port_key in permission:
+                        revoke_permission[port_key] = permission[port_key]
+                revoke_method(
+                    GroupId=group['GroupId'],
+                    IpPermissions=[revoke_permission]
+                )
     for sg_id in sg_ids:
         ec2.delete_security_group(GroupId=sg_id)
         print("Security Group with id " + sg_id + " deleted correctly")
@@ -61,8 +89,8 @@ def delete_igws(ec2, igws):
                 VpcId=attachment['VpcId']
             )
             print("Internet Gateway " + igw_id + " detached from " + attachment['VpcId'])
-        ec2.delete_internet_gateway(InternetGatewayId=igw_id)
-        print("Internet Gateway with id " + igw_id + " deleted correctly")
+            ec2.delete_internet_gateway(InternetGatewayId=igw_id)
+            print("Internet Gateway with id " + igw_id + " deleted correctly")
 
 
 # ---------- Elastic IPs ----------
@@ -84,6 +112,7 @@ def get_nat_gateways_by_tag(ec2):
 def delete_nat_gateways(ec2, nat_gateway_ids):
     for nat_gateway_id in nat_gateway_ids:
         ec2.delete_nat_gateway(NatGatewayId=nat_gateway_id)
+        ec2.get_waiter('nat_gateway_deleted').wait(NatGatewayIds=[nat_gateway_id])
         print("NAT Gateway with id " + nat_gateway_id + " deleted correctly")
 
 
@@ -135,9 +164,11 @@ if __name__ == "__main__":
     # El orden importa: primero lo que depende de otros recursos
     delete_ec2Instances(ec2, get_ec2Instance_by_tag(ec2))
     delete_sgs(ec2, get_sg_by_tag(ec2))
+    delete_nat_gateways(ec2, get_nat_gateways_by_tag(ec2))
+    delete_eips(ec2, get_eip_by_tag(ec2))
+    delete_route_tables(ec2, get_route_tables_by_tag(ec2))
     delete_igws(ec2, get_igw_by_tag(ec2))
     delete_subnets(ec2, get_subnet_by_tag(ec2))
-    delete_route_tables(ec2, get_route_tables_by_tag(ec2))
     delete_vpcs(ec2, get_vpcs_by_tag(ec2))
 
     print("=== Cleanup Completed Successfully ===")

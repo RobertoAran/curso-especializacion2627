@@ -62,27 +62,29 @@ def create_internet_access(ec2, vpc_id, subnet_id):
     igw_id = igw['InternetGateway']['InternetGatewayId']
     ec2.attach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
     print("Internet Gateway with id " + igw_id + " created and attached")
+    return igw_id
 
+def create_route_table(ec2, vpc_id, igw_id, subnet_id):
     # Tabla de rutas con salida a internet
-    rt = ec2.create_route_table(
-        VpcId=vpc_id,
-        TagSpecifications=name_tags('route-table'),
-        DryRun=DRYRUN
-    )
-    rt_id = rt['RouteTable']['RouteTableId']
-    ec2.create_route(
-        RouteTableId=rt_id,
-        DestinationCidrBlock='0.0.0.0/0',
-        GatewayId=igw_id
-    )
-    ec2.associate_route_table(RouteTableId=rt_id, SubnetId=subnet_id)
-    print("Route table with id " + rt_id + " created (0.0.0.0/0 -> " + igw_id + ")")
-    return igw_id, rt_id
+        rt = ec2.create_route_table(
+            VpcId=vpc_id,
+            TagSpecifications=name_tags('route-table'),
+            DryRun=DRYRUN
+        )
+        rt_id = rt['RouteTable']['RouteTableId']
+        ec2.create_route(
+            RouteTableId=rt_id,
+            DestinationCidrBlock='0.0.0.0/0',
+            GatewayId=igw_id
+        )
 
+        ec2.associate_route_table(RouteTableId=rt_id, SubnetId=subnet_id)
+        print("Route table with id " + rt_id + " created (0.0.0.0/0 -> " + igw_id + ")")
+        return rt_id
 
-def create_security_group(ec2, vpc_id):
+def create_security_group_public(ec2, vpc_id):
     sg = ec2.create_security_group(
-        GroupName='gs-mio',
+        GroupName='gs-mio-public',
         Description='my security group for port 22',
         VpcId=vpc_id,
         TagSpecifications=name_tags('security-group'),
@@ -97,7 +99,28 @@ def create_security_group(ec2, vpc_id):
             'ToPort': 22,
             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
         }]
-    )g
+    )
+    print("Security Group with id " + sg_id + " created (SSH allowed)")
+    return sg_id
+
+def create_security_group_private(ec2, vpc_id, sg_id_public):
+    sg = ec2.create_security_group(
+        GroupName='gs-mio-private',
+        Description='my security group for port 22 private instances',
+        VpcId=vpc_id,
+        TagSpecifications=name_tags('security-group'),
+        DryRun=DRYRUN
+    )
+    sg_id = sg['GroupId']
+    ec2.authorize_security_group_ingress(
+        GroupId=sg_id,
+        IpPermissions=[{
+            'IpProtocol': 'tcp',
+            'FromPort': 22,
+            'ToPort': 22,
+            'UserIdGroupPairs': [{'GroupId': sg_id_public}]
+        }]
+    )
     print("Security Group with id " + sg_id + " created (SSH allowed)")
     return sg_id
 
@@ -106,7 +129,7 @@ def create_elastic_ip(ec2, vpc_id):
         Domain='vpc',
         DryRun=DRYRUN,
         TagSpecifications=name_tags('elastic-ip')
-        ))['AllocationId']
+        ))
     mi_allocation_id = eip['AllocationId']
     return mi_allocation_id
 
@@ -114,13 +137,45 @@ def create_nat_gateway(ec2, subnet_id, allocation_id):
     nat_gateway = ec2.create_nat_gateway(
         SubnetId=subnet_id,
         AllocationId=allocation_id,
-        TagSpecifications=name_tags('nat-gateway'),
+        TagSpecifications=name_tags('natgateway'),
         DryRun=DRYRUN
     )
     nat_gateway_id = nat_gateway['NatGateway']['NatGatewayId']
     print("NAT Gateway with id " + nat_gateway_id + " created correctly")
+    ec2.get_waiter('nat_gateway_available').wait(NatGatewayIds=[nat_gateway_id])
     return nat_gateway_id
 
+def create_route_table_public(ec2, vpc_id, subnet_id, igw_id):
+    rt = ec2.create_route_table(
+        VpcId=vpc_id,
+        TagSpecifications=name_tags('route-table'),
+        DryRun=DRYRUN
+    )
+    rt_id = rt['RouteTable']['RouteTableId']
+    ec2.create_route(
+        RouteTableId=rt_id,
+        DestinationCidrBlock='0.0.0.0/0',
+        GatewayId=igw_id
+    )
+    ec2.associate_route_table(RouteTableId=rt_id, SubnetId=subnet_id)
+    print("Public route table with id " + rt_id + " created (0.0.0.0/0 -> " + igw_id + ")")
+    return rt_id
+
+def create_route_table_private(ec2, vpc_id, subnet_id, nat_gateway_id):
+    rt = ec2.create_route_table(
+        VpcId=vpc_id,
+        TagSpecifications=name_tags('route-table'),
+        DryRun=DRYRUN
+    )
+    rt_id = rt['RouteTable']['RouteTableId']
+    ec2.create_route(
+        RouteTableId=rt_id,
+        DestinationCidrBlock='0.0.0.0/0',
+        NatGatewayId=nat_gateway_id,
+    )
+    ec2.associate_route_table(RouteTableId=rt_id, SubnetId=subnet_id)
+    print("Private route table with id " + rt_id + " created" )
+    return rt_id
 
 def create_ec2instance(ec2, subnet_id, sg_id, private_ip_address):
     response = ec2.run_instances(
@@ -151,14 +206,18 @@ if __name__ == "__main__":
     vpc_id = create_vpc(ec2,'172.16.0.0/16')
     subnet_idpublic = create_subnet(ec2, vpc_id,'172.16.0.0/20')
     subnet_idprivate = create_subnet(ec2, vpc_id,'172.16.64.0/20')
-    sg_id = create_security_group(ec2, vpc_id)
+    sg_id_public = create_security_group_public(ec2, vpc_id)
+    sg_id_private = create_security_group_private(ec2, vpc_id, sg_id_public)
 
-    create_internet_access(ec2, vpc_id, subnet_idpublic)
+    igw_id = create_internet_access(ec2, vpc_id, subnet_idpublic)
     
     eip = create_elastic_ip(ec2, vpc_id)
-    create_nat_gateway(ec2, subnet_idpublic, eip)
 
-    create_ec2instance(ec2, subnet_idpublic, sg_id, '172.16.0.100/20')
-    create_ec2instance(ec2, subnet_idprivate, sg_id, '172.64.0.100/20')
+    create_route_table_public(ec2, vpc_id, subnet_idpublic, igw_id)
+    nat_gateway_id = create_nat_gateway(ec2, subnet_idpublic, eip)
+    create_route_table_private(ec2, vpc_id, subnet_idprivate, nat_gateway_id)
+
+    create_ec2instance(ec2, subnet_idpublic, sg_id_public, '172.16.0.100')
+    create_ec2instance(ec2, subnet_idprivate, sg_id_private, '172.16.64.100')
 
     print("=== Deployment Completed Successfully ===")
